@@ -17,3 +17,4 @@ sounddevice==0.5.5
 threadpoolctl==3.6.0
 tqdm==4.67.3
 urllib3==2.7.0
+webrtcvad-wheels==2.0.14
