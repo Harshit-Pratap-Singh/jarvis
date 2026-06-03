@@ -32,7 +32,11 @@ The user explicitly asked to **understand every step** so he can extend things o
 ├── scripts/
 │   ├── test_audio.py           # Stage 0: mic record + playback sanity check ✅ working
 │   ├── test_wakeword.py        # Stage 1: wake word detection ✅ working
-│   └── test_stt.py             # Stage 2: wake word + VAD + Whisper ✅ working
+│   ├── test_stt.py             # Stage 2: wake word + VAD + Whisper ✅ working
+│   ├── test_llm_v1.py          # Stage 3a: non-streaming LLM ✅ working
+│   ├── test_llm_v2.py          # Stage 3b: streaming LLM ✅ working
+│   ├── test_tts.py             # Stage 4a: Piper TTS standalone ✅ working
+│   └── test_assistant.py       # Stages 3-4: full pipeline (wake → STT → LLM → TTS) ✅ working
 ├── whisper.cpp/                # cloned & built. Binary at: whisper.cpp/build/bin/whisper-cli
 │                                 # Model at: whisper.cpp/models/ggml-tiny.en.bin
 ├── assistant.py                # main entrypoint — empty / placeholder
@@ -114,36 +118,14 @@ for path, hint in _checks:
 - ✅ **Stage 0:** Audio I/O sanity check
 - ✅ **Stage 1:** Wake word detection (openWakeWord, "alexa")
 - ✅ **Stage 2:** VAD recording + Whisper transcription
-- ▶️ **Stage 3 (NEXT):** LLM brain — Ollama + qwen2.5:1.5b. Take transcribed text, send to local LLM with a voice-optimized system prompt ("answer in 1-2 sentences, no markdown"), print the response.
-- **Stage 4:** TTS — Piper. Take LLM response, speak it through the speaker.
-- **Stage 5:** Polish — consolidate scripts into `assistant.py`, make it a proper state machine, error recovery, maybe a status indicator (LED on Pi later).
+- ✅ **Stage 3:** LLM brain — Ollama + qwen2.5:1.5b. Voice-optimized system prompt (few-shot example), streaming responses.
+- ✅ **Stage 4:** TTS — Piper. Sentence-streamed synthesis via threaded queue pipeline; gapless playback via `sd.OutputStream`.
+- ▶️ **Stage 5 (NEXT):** Polish — consolidate scripts into `assistant.py`, module split, explicit state machine, error recovery, persistent worker threads, maybe a status indicator (LED on Pi later). See `HANDOVER.md` for details.
 - **Stage 6+:** Optional/later — tool calling (control lights, query weather), interruption handling, follow-up turns without re-saying wake word, deploy to Pi, etc.
 
 ## What to do first in this session
 
-The natural next step is **Stage 3: plug in the LLM brain.** Concretely:
-
-1. **Confirm Ollama isn't already installed** (`which ollama`). If not, install it via the official installer for macOS.
-2. **Pull `qwen2.5:1.5b`** (smaller for Pi-parity; ~1GB download).
-3. **Test it works** with a one-shot prompt from the terminal so the user sees the model alive.
-4. **Add LLM functions to a new script** (e.g., `scripts/test_llm.py`) that takes the transcription and sends it to Ollama via its HTTP API at `localhost:11434/api/generate` or `/api/chat`. Use `requests` (already installed? if not, install it).
-5. **Critical:** explain the *system prompt* and why it's the single most important lever for voice-assistant feel. A good starting one:
-   > You are a helpful voice assistant. Answer in 1-2 short sentences. Never use bullet points, asterisks, headers, or markdown formatting — your response will be read aloud. Speak naturally and conversationally.
-6. **Wire it into the existing pipeline:** after Whisper transcribes, send the text to the LLM, print the response. (Still text-only at this stage — TTS comes in Stage 4.)
-7. **Have the user test it with real questions** and tune the system prompt based on what feels right.
-
-Don't rush past explanation. The user will want to understand:
-- Why Ollama vs running llama.cpp directly (Ollama is a friendlier wrapper)
-- What the HTTP API looks like and why local models expose one
-- What a system prompt is and how it shapes behavior
-- The streaming vs non-streaming response tradeoff
-- Why we picked qwen2.5:1.5b specifically (Pi-friendly size, decent quality)
-
-## Honest expectations for Stage 3
-
-- On the M1, `qwen2.5:1.5b` will respond in ~1-3 seconds. Fine.
-- On the Pi 4 eventually, same model will take ~10-30 seconds. The user has been warned about this and chose "fully offline" with eyes open. Don't re-litigate.
-- Quality of a 1.5B model is limited. It's good at short factual answers and conversational replies; weak at reasoning, math, current events (no internet). System prompt does a lot of work here. Be ready to discuss falling back to a cloud API later if quality bothers him — that's a Stage 6 conversation, not now.
+**This section is historical.** Stages 3 and 4 are done. Read `HANDOVER.md` for the current state — it documents what was built since this document was written, the uncommitted state at handover, and what Stage 5 looks like.
 
 ## Honest expectations for the future Pi deployment
 
